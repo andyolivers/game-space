@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroid Arcade</title>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <div id="lives"></div>
+    <div id="cooldown">Laser Ready</div>
+    <div class="cooldown-container">
+        <div id="cooldown-bar"></div>
+    </div>
+    <div id="hyperspace-indicator">H</div>
+    <canvas id="gameCanvas"></canvas>
+
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let score = 0;
+        let lives = 3;
+        let cooldown = 0;
+        let hyperspaceAvailable = true;
+        const cooldownMax = 10;
+
+        const keys = {};
+
+        class Star {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2;
+                this.speed = Math.random() * 0.5 + 0.2;
+                this.depth = Math.random() * 2 + 1; // Added depth for parallax
+            }
+
+            update() {
+                this.y += this.speed * this.depth;
+                if (this.y > canvas.height) this.y = 0;
+            }
+
+            draw() {
+                ctx.fillStyle = `rgba(173, 216, 230, ${Math.random() * 0.5 + 0.5})`; // Light blue-white
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+            }
+        }
+
+
+        class Spaceship {
+            constructor() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height / 2;
+                this.width = 40;
+                this.height = 60;
+                this.angle = 0;
+                this.speed = 0;
+                this.rotation = 0;
+                this.color = 'cyan';
+                this.hyperspace = false; // Hyperspace flag
+            }
+
+            update() {
+                // Hyperspace trigger (e.g., pressing 'H')
+                if (keys['b']) {
+                    this.hyperspace = true;
+                    this.speed = 10; // Increased speed during hyperspace
+                }
+                //if (keys['ArrowUp']) this.speed = Math.min(this.speed + 0.1, 5);
+                if (keys['ArrowLeft']) this.rotation = -0.05;
+                if (keys['ArrowRight']) this.rotation = 0.05;
+                if (!keys['ArrowLeft'] && !keys['ArrowRight']) this.rotation = 0;
+
+
+                // Handle thrust (ArrowUp for moving forward)
+                if (keys['ArrowUp']) {
+                    const thrust = 0.2; // Acceleration value
+                    this.speed = Math.min(this.speed + thrust, 5); // Limit maximum speed
+                }
+
+
+                this.angle += this.rotation;
+                //this.x += Math.cos(this.angle) * this.speed;
+                //this.y += -this.speed //Math.sin(this.angle) * this.speed;
+
+                this.x += Math.cos(this.angle-90) * this.speed;  // Horizontal movement
+                this.y += Math.sin(this.angle-90) * this.speed;  // Vertical movement
+
+
+                this.speed *= 0.98; // friction
+
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.y < 0) this.y = canvas.height;
+
+                if (this.hyperspace) {
+                    // Once hyperspace is triggered, end it after a short period (e.g., 1 second)
+                    setTimeout(() => {
+                        this.hyperspace = false;
+                        this.speed = 0; // Reset speed after hyperspace ends
+                    }, 1000); // Hyperspace lasts 1 second
+                }
+
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                // Ship body (more streamlined, spaceship-like design)
+                ctx.beginPath();
+                ctx.moveTo(0, -this.height / 2); // Top tip of the ship
+                ctx.lineTo(-this.width / 2, this.height / 4); // Bottom left
+                ctx.lineTo(-this.width / 4, this.height / 2); // Left wing
+                ctx.lineTo(this.width / 4, this.height / 2); // Right wing
+                ctx.lineTo(this.width / 2, this.height / 4); // Bottom right
+                ctx.closePath();
+                ctx.fillStyle = 'cyan'; // Same color as before
+                ctx.fill();
+
+                // Black triangular windshield (inside the ship)
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.moveTo(0, -this.height / 4); // Top point of the windshield
+                ctx.lineTo(this.width / 4, 0); // Right side of the windshield
+                ctx.lineTo(-this.width / 4, 0); // Left side of the windshield
+                ctx.closePath();
+                ctx.fill();
+
+
+                // Red side triangles (wings)
+                ctx.fillStyle = 'lime';
+
+                // Left wing (attached to the bottom left corner of the ship)
+                ctx.beginPath();
+                ctx.moveTo(-this.width / 2, this.height / 4); // Bottom left of the ship
+                ctx.lineTo(-this.width / 4, this.height / 2); // Bottom left inner connection
+                ctx.lineTo(-this.width / 2 - 15, this.height / 2); // Outer tip of the left wing
+                ctx.closePath();
+                ctx.fill();
+
+                // Right wing (attached to the bottom right corner of the ship)
+                ctx.beginPath();
+                ctx.moveTo(this.width / 2, this.height / 4); // Bottom right of the ship
+                ctx.lineTo(this.width / 4, this.height / 2); // Bottom right inner connection
+                ctx.lineTo(this.width / 2 + 15, this.height / 2); // Outer tip of the right wing
+                ctx.closePath();
+                ctx.fill();
+
+
+                // Grey tube nozzle (engine at the bottom center of the ship)
+                ctx.fillStyle = 'grey';
+                ctx.beginPath();
+                ctx.moveTo(-this.width / 8, this.height / 2); // Top left of the tube
+                ctx.lineTo(this.width / 8, this.height / 2); // Top right of the tube
+                ctx.lineTo(this.width / 12, this.height / 2 + 5); // Bottom right of the tube
+                ctx.lineTo(-this.width / 12, this.height / 2 + 5); // Bottom left of the tube
+                ctx.closePath();
+                ctx.fill();
+
+
+                // Hyperspace effect (if hyperspace is triggered)
+                if (this.hyperspace) {
+                    this.drawHyperspaceEffect();
+                }
+
+                // Engine flame (when ArrowUp is pressed)
+                if (keys['ArrowUp']) {
+                    ctx.fillStyle = 'orange';
+                    const flameLength = Math.random() * 10 + 20; // Random flame length for animation
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width / 4, this.height / 2);
+                    ctx.lineTo(this.width / 4, this.height / 2);
+                    ctx.lineTo(0, this.height / 2 + flameLength); // Engine flame
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+
+            // Hyperspace effect: creates a burst of light or particle effect
+            drawHyperspaceEffect() {
+                const numParticles = 50;
+                ctx.save();
+                ctx.fillStyle = 'white';
+                for (let i = 0; i < numParticles; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = Math.random() * 200 + 50;
+                    const x = Math.cos(angle) * distance + this.x;
+                    const y = Math.sin(angle) * distance + this.y;
+                    const size = Math.random() * 3 + 1;
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+        }
+
+
+
+
+
+        class Laser {
+            constructor(x, y, angle) {
+                this.x = x;
+                this.y = y;
+                this.angle = angle ; //+ Math.PI/2;
+                this.speed = 8;
+                this.width = 20; // Width of the laser beam
+                this.height = 4; // Length of the laser beam
+            }
+
+            update() {
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+
+                // Remove laser if it goes off-screen
+                if (
+                    this.x < 0 || 
+                    this.x > canvas.width || 
+                    this.y < 0 || 
+                    this.y > canvas.height
+                ) {
+                    lasers.splice(lasers.indexOf(this), 1);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'red';
+                ctx.fillStyle = 'red';
+                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                ctx.restore();
+            }
+
+
+        }
+
+
+
+
+
+
+        let lasers = [];
+
+
+        function shootLaser() {
+            if (cooldown === 0) {
+                // Get the tip position of the spaceship
+                const shipTipX = ship.x ; //+ Math.cos(ship.angle) * ship.height / 2;
+                const shipTipY = ship.y ; //+ Math.sin(ship.angle) * ship.height / 2;
+
+                // Laser angle is opposite to the spaceship's direction (90 degrees from the flame)
+                const laserAngle = ship.angle - Math.PI/2;
+
+                lasers.push(new Laser(shipTipX, shipTipY, laserAngle));
+                cooldown = cooldownMax; // Reset cooldown
+            }
+        }
+
+
+
+        class Asteroid {
+            constructor(x, y, size) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.speed = Math.random() * 2 + 1;
+                this.angle = Math.random() * Math.PI * 2;
+                this.rotationSpeed = Math.random() * 0.05 - 0.025;
+                this.rotation = 0;
+            }
+
+            update() {
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+                this.rotation += this.rotationSpeed;
+
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.y < 0) this.y = canvas.height;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Set fill and stroke styles
+                //ctx.fillStyle = Math.random() > 0.5 ? 'gray' : 'grey'; // Gray or brown color
+                //ctx.strokeStyle = 'black';
+                //ctx.lineWidth = 2;
+
+                // Set color based on asteroid size
+                let asteroidColor;
+                if (this.size < 15) {
+                    asteroidColor = 'burlywood'; // Small asteroids are light gray
+                } else if (this.size < 30) {
+                    asteroidColor = 'saddlebrown'; // Medium asteroids are gray
+                } else if (this.size < 60) {
+                    asteroidColor = 'gray'; // Medium asteroids are gray
+                } else {
+                    asteroidColor = 'gray'; // Large asteroids are dark gray
+                }
+
+                ctx.fillStyle = asteroidColor; // Set the fill color based on size
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+
+                // Create a jagged shape for the asteroid
+                const points = 8 + Math.floor(Math.random() * 4); // 8-11 points
+                ctx.beginPath();
+                for (let i = 0; i < points; i++) {
+                    const angle = (Math.PI * 2 / points) * i;
+                    const distance = this.size + Math.random() * 10 - 5; // Jagged edges
+                    const x = Math.cos(angle) * distance;
+                    const y = Math.sin(angle) * distance;
+                    ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                
+                // Fill and stroke the asteroid shape
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+
+
+
+        const stars = Array.from({ length: 100 }, () => new Star());
+        const ship = new Spaceship();
+        const asteroids = Array.from({ length: 5 }, () => new Asteroid(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 40 + 20));
+
+
+
+        class Message {
+            constructor(x, y, text, duration = 2000) {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.alpha = 1; // Opacity for fade-out effect
+                this.startTime = Date.now();
+                this.duration = duration;
+            }
+
+            update() {
+                const elapsed = Date.now() - this.startTime;
+                if (elapsed >= this.duration) {
+                    messages.splice(messages.indexOf(this), 1); // Remove the message
+                } else {
+                    this.alpha = 1 - elapsed / this.duration; // Fade out over time
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = 'lime';
+                ctx.font = '16px "Press Start 2P"';
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+        }
+
+        const messages = [];
+
+
+        function checkCollisions() {
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const asteroid = asteroids[i];
+
+                // Check collision with the spaceship
+                const distToShip = Math.hypot(ship.x - asteroid.x, ship.y - asteroid.y);
+                if (distToShip < asteroid.size + ship.width / 2) {
+                    // Handle collision with the spaceship
+                    lives--;
+                    asteroids.splice(i, 1); // Remove asteroid
+                    if (lives < 0) gameOver();
+                    continue;
+                }
+
+                // Check collision with lasers
+                for (let j = lasers.length - 1; j >= 0; j--) {
+                    const laser = lasers[j];
+                    const distToLaser = Math.hypot(laser.x - asteroid.x, laser.y - asteroid.y);
+                    if (distToLaser < asteroid.size) {
+                        // Add a "+1" message at the asteroid's position
+                        messages.push(new Message(asteroid.x, asteroid.y, '+1'));
+
+                        // Split the asteroid into fragments
+                        if (asteroid.size > 20) {
+                            const fragmentCount = 2 + Math.floor(Math.random() * 3); // 2-4 fragments
+                            for (let k = 0; k < fragmentCount; k++) {
+                                const fragmentSize = asteroid.size / 2;
+                                asteroids.push(
+                                    new Asteroid(
+                                        asteroid.x,
+                                        asteroid.y,
+                                        fragmentSize
+                                    )
+                                );
+                            }
+                        }
+
+                        // Remove the laser and the asteroid
+                        lasers.splice(j, 1);
+                        asteroids.splice(i, 1);
+
+                        // Update the score
+                        score += Math.floor(100 / asteroid.size);
+                        break;
+                    }
+                }
+            }
+        }
+
+
+
+
+        let asteroidsToDestroy = []; // Array to track asteroids to be destroyed
+
+        function checkLaserCollisions() {
+            lasers.forEach(laser => {
+                asteroids.forEach(asteroid => {
+                    const dx = laser.x - asteroid.x;
+                    const dy = laser.y - asteroid.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < asteroid.size) {
+                        asteroidsToDestroy.push(asteroid);  // Add asteroid to destruction list
+                        lasers = lasers.filter(l => l !== laser);  // Remove laser
+                        score += asteroid.size > 30 ? 50 : 10; // Increase score based on asteroid size
+                    }
+                });
+            });
+        }
+
+        function destroyAsteroids() {
+            asteroidsToDestroy.forEach(asteroid => {
+                destroyAsteroid(asteroid); // Destroy asteroid and create fragments
+            });
+            asteroidsToDestroy = [];  // Clear the destruction list
+        }
+
+
+
+        function hyperspace() {
+            if (hyperspaceAvailable) {
+                hyperspaceAvailable = false;
+                ship.x = Math.random() * canvas.width;
+                ship.y = Math.random() * canvas.height;
+
+                // Small chance of malfunction
+                if (Math.random() < 0.2) {
+                    // Teleport into an asteroid
+                    ship.x = asteroids[Math.floor(Math.random() * asteroids.length)].x;
+                    ship.y = asteroids[Math.floor(Math.random() * asteroids.length)].y;
+                    lives--; // Loss of life if malfunction occurs
+                }
+
+                setTimeout(() => hyperspaceAvailable = true, 5000); // Recharge after 5 seconds
+            }
+        }
+
+
+        function increaseScore(asteroid) {
+            if (asteroid.size > 30) score += 50;
+            else score += 10;
+        }
+
+
+
+        function resetGame() {
+            lives = 3; // Reset lives
+            score = 0; // Reset score
+            cooldown = 0; // Reset laser cooldown
+            lasers = []; // Clear lasers
+            asteroids = Array.from({ length: 5 }, () => 
+                new Asteroid(
+                    Math.random() * canvas.width, 
+                    Math.random() * canvas.height, 
+                    Math.random() * 40 + 20
+                )
+            ); // Generate new asteroids
+
+            // Reset the spaceship to the center
+            ship.x = canvas.width / 2;
+            ship.y = canvas.height / 2;
+            ship.angle = 0;
+            ship.speed = 0;
+        }
+
+
+
+        function gameOver() {
+            cancelAnimationFrame(gameLoop);
+            
+            // "Game Over" text
+            ctx.fillStyle = 'red';
+            ctx.font = '40px "Press Start 2P"';
+            const gameOverText = 'Game Over';
+            const gameOverWidth = ctx.measureText(gameOverText).width;
+            ctx.fillText(gameOverText, canvas.width / 2 - gameOverWidth / 2, canvas.height / 2 - 40);
+            
+            // Score text
+            ctx.fillStyle = 'yellow';
+            ctx.font = '24px "Press Start 2P"';
+            const scoreText = `Score: ${score}`;
+            const scoreWidth = ctx.measureText(scoreText).width;
+            ctx.fillText(scoreText, canvas.width / 2 - scoreWidth / 2, canvas.height / 2 + 40);
+            
+            // Restart instruction
+            ctx.fillStyle = 'white';
+            ctx.font = '16px "Press Start 2P"';
+            const restartText = 'Press R to Restart';
+            const restartWidth = ctx.measureText(restartText).width;
+            ctx.fillText(restartText, canvas.width / 2 - restartWidth / 2, canvas.height / 2 + 80);
+            
+            resetGame(); // Reset the game state
+        }
+
+        window.addEventListener('keydown', e => {
+            if (e.key === 'r') location.reload(); // Restart game
+        });
+
+
+        function drawLives() {
+            const livesContainer = document.getElementById('lives');
+            
+            // Set the "Lives:" text with normal font size
+            livesContainer.innerHTML = '';
+            
+            // Create a span element for the hearts with a larger font size
+            const heartsSpan = document.createElement('span');
+            heartsSpan.style.fontSize = '40px'; // Adjust the font size as needed
+                heartsSpan.style.color = 'red'; // Set the color to red
+            heartsSpan.innerHTML = '♥️'.repeat(lives);
+            
+            // Append the hearts to the lives container
+            livesContainer.appendChild(heartsSpan);
+        }
+
+
+        function updateHyperspaceIndicator() {
+            const indicator = document.getElementById('hyperspace-indicator');
+            if (hyperspaceAvailable) {
+                indicator.classList.add('active');
+            } else {
+                indicator.classList.remove('active');
+            }
+        }
+
+
+        let startTime; // To store the start time
+        let gameDuration = 120000; // 10 seconds in milliseconds
+        let gameOverFlag = false; // Flag to mark if the game is over
+
+        // Call this function when the game starts
+        function startGame() {
+            startTime = Date.now(); // Capture the current time when the game starts
+            gameOverFlag = false; // Reset the game over flag
+            gameLoop(); // Start the game loop
+        }
+
+
+        function formatTime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+
+            // Format time as mm:ss (e.g., 00:10, 01:45)
+            return `${minutes < 10 ? '0' : ''}${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+        }
+
+
+
+
+        function gameLoop() {
+
+            if (gameOverFlag) return; // Stop the loop if the game is over
+
+            let currentTime = Date.now(); // Get the current time
+            let elapsedTime = currentTime - startTime; // Calculate the elapsed time
+
+            let remainingTime = gameDuration - elapsedTime; // Calculate remaining time
+
+
+            if (remainingTime <= 0 || asteroids.length === 0) {
+                gameOver(); // End the game if the timer reaches 0 or there are no more asteroids
+                return; // Stop the game loop
+            }
+
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
+            // Draw the countdown timer in the top-left corner above the score
+            const formattedTime = formatTime(remainingTime);
+            drawTimer(formattedTime);
+
+            // Update and draw background stars
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+
+            // Update and draw spaceship
+            ship.update();
+            ship.draw();
+
+            // Update and draw asteroids
+            asteroids.forEach(asteroid => {
+                asteroid.update();
+                asteroid.draw();
+            });
+
+            // Update and draw lasers
+            lasers.forEach(laser => {
+                laser.update();
+                laser.draw();
+            });
+
+            // Handle collisions
+            checkCollisions();
+
+            // Update and draw messages
+            messages.forEach(message => {
+                message.update();
+                message.draw();
+            });
+
+            // Update UI elements
+            document.getElementById('score').textContent = `Score: ${score}`;
+            document.getElementById('cooldown').textContent = cooldown > 0 ? `Cooldown: ${cooldown}` : 'Laser Ready';
+            drawLives();
+            updateHyperspaceIndicator();
+
+
+            // Update cooldown progress bar
+            const cooldownBar = document.getElementById('cooldown-bar');
+            cooldownBar.style.transform = `scaleX(${cooldown / cooldownMax})`;
+
+            // Reduce laser cooldown
+            cooldown = Math.max(0, cooldown - 1);
+
+            // Request the next frame
+            requestAnimationFrame(gameLoop);
+        }
+
+
+        // Function to draw the timer on the screen
+        function drawTimer(time) {
+            ctx.save();
+            ctx.fillStyle = 'white';
+            ctx.font = '22px "Press Start 2P"'; // Adjust font size if needed
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(time, 10, 10); // Position it 10px from the left and top
+            ctx.restore();
+        }
+
+
+
+        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keyup', e => keys[e.key] = false);
+
+        window.addEventListener('keydown', e => {
+            keys[e.key] = true;
+            if (e.key === ' ') shootLaser();
+        });
+
+
+        window.addEventListener('keydown', e => {
+            if (e.key === 'h') hyperspace();
+        });
+
+
+        //gameLoop();
+        // Call the startGame function to begin the game
+        startGame();
+
+    </script>
+</body>
+</html>

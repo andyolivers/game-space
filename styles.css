@@ -1,0 +1,78 @@
+/* styles.css */
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background: black;
+    font-family: 'Press Start 2P', monospace;
+}
+
+canvas {
+    display: block;
+}
+
+.ui {
+    position: fixed;
+    color: white;
+}
+
+#score {
+    position: fixed;
+    top: 50px;
+    left: 10px;
+    font-size: 18px;
+    color: yellow;
+}
+
+#lives {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    font-size: 18px;
+    color: white;
+}
+
+.cooldown-container {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 150px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid white;
+}
+
+#cooldown-bar {
+    height: 100%;
+    width: 100%;
+    background: lime;
+    transform-origin: left;
+    transform: scaleX(1);
+    transition: transform 0.1s linear;
+}
+
+#cooldown {
+    position: fixed;
+    top: 25px;
+    right: 10px;
+    font-size: 14px;
+    color: white;
+}
+
+#hyperspace-indicator {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    width: 35px;
+    height: 35px;
+    border: 2px solid white;
+    text-align: center;
+    line-height: 35px;
+    font-size: 14px;
+    color: white;
+    background: red;
+}
+
+#hyperspace-indicator.active {
+    background: lime;
+}
