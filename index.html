@@ -91,9 +91,21 @@
                 this.rotation = 0;
                 this.color = 'cyan';
                 this.hyperspace = false; // Hyperspace flag
+                this.shakeDuration = 0; // Frames to shake
+                this.shakeIntensity = 10; // Intensity of the shake
+            }
+
+            shake(duration) {
+                this.shakeDuration = duration; // Set shake duration
             }
 
             update() {
+
+                // Reduce shake duration each frame
+                if (this.shakeDuration > 0) {
+                    this.shakeDuration--;
+                }
+
                 // Hyperspace trigger (e.g., pressing 'H')
                 if (keys['b']) {
                     this.hyperspace = true;
@@ -139,9 +151,19 @@
 
             draw() {
                 ctx.save();
-                ctx.translate(this.x, this.y);
+
+                // Apply shake effect
+                let offsetX = 0;
+                let offsetY = 0;
+                if (this.shakeDuration > 0) {
+                    offsetX = (Math.random() - 0.5) * this.shakeIntensity;
+                    offsetY = (Math.random() - 0.5) * this.shakeIntensity;
+                }
+
+                // Translate to ship position with shaking offset
+                ctx.translate(this.x + offsetX, this.y + offsetY);
                 ctx.rotate(this.angle);
-                
+
                 // Ship body (more streamlined, spaceship-like design)
                 ctx.beginPath();
                 ctx.moveTo(0, -this.height / 2); // Top tip of the ship
@@ -150,7 +172,7 @@
                 ctx.lineTo(this.width / 4, this.height / 2); // Right wing
                 ctx.lineTo(this.width / 2, this.height / 4); // Bottom right
                 ctx.closePath();
-                ctx.fillStyle = 'cyan'; // Same color as before
+                ctx.fillStyle = 'cyan'; // Main ship color
                 ctx.fill();
 
                 // Black triangular windshield (inside the ship)
@@ -161,7 +183,6 @@
                 ctx.lineTo(-this.width / 4, 0); // Left side of the windshield
                 ctx.closePath();
                 ctx.fill();
-
 
                 // Red side triangles (wings)
                 ctx.fillStyle = 'lime';
@@ -182,7 +203,6 @@
                 ctx.closePath();
                 ctx.fill();
 
-
                 // Grey tube nozzle (engine at the bottom center of the ship)
                 ctx.fillStyle = 'grey';
                 ctx.beginPath();
@@ -193,22 +213,9 @@
                 ctx.closePath();
                 ctx.fill();
 
-
                 // Hyperspace effect (if hyperspace is triggered)
                 if (this.hyperspace) {
                     this.drawHyperspaceEffect();
-                }
-
-                // Engine flame (when ArrowUp is pressed)
-                if (keys['ArrowUp']) {
-                    ctx.fillStyle = 'orange';
-                    const flameLength = Math.random() * 10 + 20; // Random flame length for animation
-                    ctx.beginPath();
-                    ctx.moveTo(-this.width / 4, this.height / 2);
-                    ctx.lineTo(this.width / 4, this.height / 2);
-                    ctx.lineTo(0, this.height / 2 + flameLength); // Engine flame
-                    ctx.closePath();
-                    ctx.fill();
                 }
 
                 ctx.restore();
@@ -635,6 +642,7 @@
                     // Handle collision with the spaceship
                     lives--;
                     messages.push(new Message(ship.x, ship.y, '-1','red'));
+                    ship.shake(10); // Trigger the shake effect for 10 frames
                     asteroids.splice(i, 1); // Remove asteroid
                     if (lives < 0) gameOver();
                     continue;
@@ -705,6 +713,7 @@
                 if (distToShip < ufo.size + ship.width / 2) {
                     // Handle collision with the spaceship (UFO hits spaceship)
                     lives--;
+                    ship.shake(10); // Trigger the shake effect for 10 frames
                     messages.push(new Message(ship.x, ship.y, '-1', 'red'));
                     ufos.splice(i, 1);
                     if (lives < 0) gameOver();
@@ -719,6 +728,7 @@
                     if (distToShip < ship.width / 2) {
                         // UFO laser hits the spaceship
                         lives--;
+                        ship.shake(10); // Trigger the shake effect for 10 frames
                         messages.push(new Message(ship.x, ship.y, '-1', 'red'));
                         lasers.splice(i, 1);
                         if (lives < 0) gameOver();
