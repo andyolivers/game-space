@@ -384,6 +384,94 @@
         const messages = [];
 
 
+
+        class Heart {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = 20; // Heart size (radius)
+                this.color = 'red';
+                this.speed = Math.random() * 2 + 1; // Speed of the heart
+                this.angle = Math.random() * Math.PI * 2; // Random movement direction
+            }
+
+            update() {
+                // Move the heart in its angle direction
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+
+                // Wrap around the canvas edges
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.y < 0) this.y = canvas.height;
+            }
+
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                // Draw a wider heart shape
+                ctx.moveTo(this.x, this.y - this.size / 2); // Top center of the heart
+                ctx.bezierCurveTo(
+                    this.x - this.size, this.y - this.size, // Control point 1 (left wider)
+                    this.x - this.size * 1.5, this.y,      // Control point 2 (left wider bottom)
+                    this.x, this.y + this.size             // Bottom tip
+                );
+                ctx.bezierCurveTo(
+                    this.x + this.size * 1.5, this.y,      // Control point 3 (right wider bottom)
+                    this.x + this.size, this.y - this.size, // Control point 4 (right wider)
+                    this.x, this.y - this.size / 2         // Top center of the heart
+                );
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+
+            // Check collision with the ship
+            checkCollisionHeart(ship) {
+                const dx = this.x - ship.x;
+                const dy = this.y - ship.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                return distance < this.size + ship.width / 2; // Collision based on size
+            }
+        }
+
+        // Variables for hearts and collision feedback
+        const hearts = [];
+        let heartSpawnTimer = 0; // Timer for spawning hearts
+        const heartSpawnInterval = 20000; // Spawn a heart every 10 seconds
+        const feedbackMessages = []; // Store feedback messages like "+1"
+
+        // Feedback Message Class
+        class FeedbackMessage {
+            constructor(x, y, text, color) {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.color = color;
+                this.lifetime = 2000; // 2 seconds in milliseconds
+                this.startTime = Date.now();
+            }
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = this.color;
+                ctx.font = '16px "Press Start 2P"';
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+
+            isExpired() {
+                return Date.now() - this.startTime > this.lifetime;
+            }
+        }
+
+
+
+
         function checkCollisions() {
             for (let i = asteroids.length - 1; i >= 0; i--) {
                 const asteroid = asteroids[i];
@@ -631,6 +719,41 @@
                 asteroid.update();
                 asteroid.draw();
             });
+
+
+
+
+            // Spawn hearts every 10 seconds
+            heartSpawnTimer += 16.67; // Approx. time per frame (60 FPS)
+            if (heartSpawnTimer >= heartSpawnInterval) {
+                hearts.push(new Heart());
+                heartSpawnTimer = 0;
+            }
+
+            // Update and draw hearts
+            hearts.forEach((heart, index) => {
+                heart.update(); // Move the heart
+                heart.draw();
+
+                // Check collision with the ship
+                if (heart.checkCollisionHeart(ship)) {
+                    lives++; // Increase lives
+                    feedbackMessages.push(
+                        new FeedbackMessage(ship.x, ship.y - 20, "+1", "red")
+                    ); // Add "+1" feedback
+                    hearts.splice(index, 1); // Remove the heart after collision
+                }
+            });
+
+            // Update and draw feedback messages
+            feedbackMessages.forEach((message, index) => {
+                message.draw();
+                if (message.isExpired()) {
+                    feedbackMessages.splice(index, 1); // Remove expired messages
+                }
+            });
+
+
 
             // Update and draw lasers
             lasers.forEach(laser => {
