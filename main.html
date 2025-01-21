@@ -5,20 +5,45 @@
     <link rel="stylesheet" href="styles.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asteroid Arcade</title>
+    <title>Rogue Wars</title>
 </head>
 <body>
-    <div id="score">Score: 0</div>
-    <div id="lives"></div>
-    <div id="cooldown">Laser Ready</div>
-    <div class="cooldown-container">
-        <div id="cooldown-bar"></div>
+    <div id="main-menu">
+        <h1 id="game-title">Rogue Wars</h1>
+        <p id="game-description">You are a rogue ship wandering through space. You are under attack and need to destroy all asteroids on your way to your planet.</p>
+        <button id="start-button">Start</button>
+        <button id="exit-button">Exit</button>
     </div>
-    <div id="hyperspace-indicator">H</div>
-    <canvas id="gameCanvas"></canvas>
 
+    <div id="game-container" style="display: none;">
+        <div id="score">Score: 0</div>
+        <div id="lives"></div>
+        <div id="cooldown">Laser Ready</div>
+        <div class="cooldown-container">
+            <div id="cooldown-bar"></div>
+        </div>
+        <div id="hyperspace-indicator">H</div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
 
     <script>
+        const mainMenu = document.getElementById('main-menu');
+        const gameContainer = document.getElementById('game-container');
+        const startButton = document.getElementById('start-button');
+        const exitButton = document.getElementById('exit-button');
+
+        // Start the game
+        startButton.addEventListener('click', () => {
+            mainMenu.style.display = 'none';
+            gameContainer.style.display = 'block';
+            startGame(); // Function to start the game loop
+        });
+
+        // Exit the game
+        exitButton.addEventListener('click', () => {
+            window.close(); // Attempt to close the window (may not work in all browsers)
+        });
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -800,7 +825,7 @@
             // Restart instruction
             ctx.fillStyle = 'white';
             ctx.font = '16px "Press Start 2P"';
-            const restartText = 'Press R to Restart';
+            const restartText = 'Press ESC to Restart';
             const restartWidth = ctx.measureText(restartText).width;
             ctx.fillText(restartText, canvas.width / 2 - restartWidth / 2, canvas.height / 2 + 80);
             
@@ -808,7 +833,7 @@
         }
 
         window.addEventListener('keydown', e => {
-            if (e.key === 'r') location.reload(); // Restart game
+            if (e.key === 'Escape') location.reload(); // Restart game
         });
 
 
@@ -1016,7 +1041,7 @@
 
         //gameLoop();
         // Call the startGame function to begin the game
-        startGame();
+        //startGame();
 
     </script>
 </body>

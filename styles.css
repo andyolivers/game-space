@@ -76,3 +76,44 @@ canvas {
 #hyperspace-indicator.active {
     background: lime;
 }
+
+
+#main-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: black;
+    color: white;
+    text-align: center;
+}
+
+#game-title {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: cyan
+}
+
+#game-description {
+    font-size: 18px;
+    margin-bottom: 40px;
+    width: 60%;
+}
+
+button {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    padding: 10px 20px;
+    margin: 10px;
+    border: 2px solid indigo;
+    background: black;
+    color: indigo;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: indigo;
+    color: white;
+}
