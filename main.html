@@ -26,8 +26,9 @@
         canvas.height = window.innerHeight;
 
         let score = 0;
-        let lives = 3;
+        let lives = 5;
         let cooldown = 0;
+        let ufos = [];
         let hyperspaceAvailable = true;
         const cooldownMax = 10;
 
@@ -252,10 +253,6 @@
         }
 
 
-
-
-
-
         let lasers = [];
 
 
@@ -273,6 +270,46 @@
             }
         }
 
+
+
+        class UFOLaser {
+            constructor(x, y, angle) {
+                this.x = x;
+                this.y = y;
+                this.angle = angle ; //+ Math.PI/2;
+                this.speed = 8;
+                this.width = 20; // Width of the laser beam
+                this.height = 4; // Length of the laser beam
+            }
+
+            update() {
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+
+                // Remove laser if it goes off-screen
+                if (
+                    this.x < 0 || 
+                    this.x > canvas.width || 
+                    this.y < 0 || 
+                    this.y > canvas.height
+                ) {
+                    lasers.splice(lasers.indexOf(this), 1);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'lime';
+                ctx.fillStyle = 'lime';
+                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                ctx.restore();
+            }
+
+
+        }
 
 
         class Asteroid {
@@ -353,10 +390,11 @@
 
 
         class Message {
-            constructor(x, y, text, duration = 2000) {
+            constructor(x, y, text,color, duration = 2000) {
                 this.x = x;
                 this.y = y;
                 this.text = text;
+                this.color = color;
                 this.alpha = 1; // Opacity for fade-out effect
                 this.startTime = Date.now();
                 this.duration = duration;
@@ -374,7 +412,7 @@
             draw() {
                 ctx.save();
                 ctx.globalAlpha = this.alpha;
-                ctx.fillStyle = 'lime';
+                ctx.fillStyle = this.color;
                 ctx.font = '16px "Press Start 2P"';
                 ctx.fillText(this.text, this.x, this.y);
                 ctx.restore();
@@ -470,9 +508,99 @@
         }
 
 
+        class UFO {
+            constructor(x, y, size, shootRate = 500) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.speed = Math.random() * 1.5 + 0.5; // UFO speed
+                this.angle = Math.random() * Math.PI * 2; // Random initial angle
+                this.rotationSpeed = 0.05; // Rotates continuously
+                this.rotation = 0; // Current rotation angle
+                this.shootInterval = shootRate; // Customizable shooting interval
+                this.lastShot = Date.now(); // Timestamp of the last shot
+                this.color = 'purple'; // Outer UFO color
+                this.windshieldColor = 'lightblue'; // Windshield color
+            }
+
+            update() {
+                // Move the UFO in its current direction
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+
+                // Keep it rotating
+                this.rotation += this.rotationSpeed;
+
+                // Wrap around the canvas edges
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.y < 0) this.y = canvas.height;
+
+                // Shoot green lasers at intervals
+                if (Date.now() - this.lastShot > this.shootInterval) {
+                    this.shoot();
+                    this.lastShot = Date.now();
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Outer Circle (larger UFO body)
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Inner Circle (smaller UFO body)
+                ctx.fillStyle = 'indigo'; // Inner circle color
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size / 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw small rectangular windshields around the inner circle
+                const numWindshields = 12; // Number of windshield rectangles
+                const windshieldWidth = 5; // Width of each rectangle
+                const windshieldHeight = 10; // Height of each rectangle
+                const radius = this.size / 1.5; // Radius of the inner circle where windshields are placed
+
+                ctx.fillStyle = this.windshieldColor;
+                for (let i = 0; i < numWindshields; i++) {
+                    const angle = (Math.PI * 2 / numWindshields) * i; // Angle for each windshield
+                    const x = Math.cos(angle) * radius; // X position based on angle
+                    const y = Math.sin(angle) * radius; // Y position based on angle
+
+                    // Draw a small rectangle at each angle
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(angle); // Rotate the rectangle to align with the angle
+                    ctx.fillRect(-windshieldWidth / 2, -windshieldHeight / 2, windshieldWidth, windshieldHeight); // Draw the rectangle
+                    ctx.restore();
+                }
+
+                // Outer rim of the UFO
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            shoot() {
+                // Create a green laser fired by the UFO
+                lasers.push(new UFOLaser(this.x, this.y, this.angle, 'lime', 4));
+            }
+        }
+
 
 
         function checkCollisions() {
+            // Handle asteroid collisions
             for (let i = asteroids.length - 1; i >= 0; i--) {
                 const asteroid = asteroids[i];
 
@@ -481,41 +609,94 @@
                 if (distToShip < asteroid.size + ship.width / 2) {
                     // Handle collision with the spaceship
                     lives--;
+                    messages.push(new Message(ship.x, ship.y, '-1','red'));
                     asteroids.splice(i, 1); // Remove asteroid
                     if (lives < 0) gameOver();
                     continue;
                 }
 
-                // Check collision with lasers
+                // Check collision with lasers (spaceship lasers)
                 for (let j = lasers.length - 1; j >= 0; j--) {
                     const laser = lasers[j];
-                    const distToLaser = Math.hypot(laser.x - asteroid.x, laser.y - asteroid.y);
-                    if (distToLaser < asteroid.size) {
-                        // Add a "+1" message at the asteroid's position
-                        messages.push(new Message(asteroid.x, asteroid.y, '+1'));
+                    if (!(laser instanceof UFOLaser)) { // Ignore UFO lasers
+                        const distToLaser = Math.hypot(laser.x - asteroid.x, laser.y - asteroid.y);
+                        if (distToLaser < asteroid.size) {
+                            // Add a "+1" message at the asteroid's position
+                            messages.push(new Message(asteroid.x, asteroid.y, '+1','lime'));
 
-                        // Split the asteroid into fragments
-                        if (asteroid.size > 20) {
-                            const fragmentCount = 2 + Math.floor(Math.random() * 3); // 2-4 fragments
-                            for (let k = 0; k < fragmentCount; k++) {
-                                const fragmentSize = asteroid.size / 2;
-                                asteroids.push(
-                                    new Asteroid(
-                                        asteroid.x,
-                                        asteroid.y,
-                                        fragmentSize
-                                    )
-                                );
+                            // Split the asteroid into fragments
+                            if (asteroid.size > 20) {
+                                const fragmentCount = 2 + Math.floor(Math.random() * 3); // 2-4 fragments
+                                for (let k = 0; k < fragmentCount; k++) {
+                                    const fragmentSize = asteroid.size / 2;
+                                    asteroids.push(
+                                        new Asteroid(
+                                            asteroid.x,
+                                            asteroid.y,
+                                            fragmentSize
+                                        )
+                                    );
+                                }
                             }
+
+                            // Remove the laser and the asteroid
+                            lasers.splice(j, 1);
+                            asteroids.splice(i, 1);
+
+                            // Update the score
+                            score += Math.floor(100 / asteroid.size);
+                            break;
                         }
+                    }
+                }
+            }
 
-                        // Remove the laser and the asteroid
-                        lasers.splice(j, 1);
-                        asteroids.splice(i, 1);
+            // Handle UFO collisions
+            for (let i = ufos.length - 1; i >= 0; i--) {
+                const ufo = ufos[i];
 
-                        // Update the score
-                        score += Math.floor(100 / asteroid.size);
-                        break;
+                // Check collision with spaceship lasers (not UFO lasers)
+                for (let j = lasers.length - 1; j >= 0; j--) {
+                    const laser = lasers[j];
+                    if (!(laser instanceof UFOLaser)) { // Ignore UFO lasers
+                        const distToLaser = Math.hypot(laser.x - ufo.x, laser.y - ufo.y);
+                        if (distToLaser < ufo.size) {
+                            // Add a "+10" message at the UFO's position
+                            messages.push(new Message(ufo.x, ufo.y, '+10','yellow'));
+
+                            // Remove the UFO and the laser
+                            ufos.splice(i, 1);
+                            lasers.splice(j, 1);
+
+                            // Update the score
+                            score += 10;
+                            break;
+                        }
+                    }
+                }
+
+                // Check collision with the spaceship (UFO hits the spaceship)
+                const distToShip = Math.hypot(ship.x - ufo.x, ship.y - ufo.y);
+                if (distToShip < ufo.size + ship.width / 2) {
+                    // Handle collision with the spaceship (UFO hits spaceship)
+                    lives--;
+                    messages.push(new Message(ship.x, ship.y, '-1', 'red'));
+                    ufos.splice(i, 1);
+                    if (lives < 0) gameOver();
+                }
+            }
+
+            // Handle UFO laser collisions (UFO laser hits the spaceship)
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                const laser = lasers[i];
+                if (laser instanceof UFOLaser) { // Only check UFO lasers
+                    const distToShip = Math.hypot(ship.x - laser.x, ship.y - laser.y);
+                    if (distToShip < ship.width / 2) {
+                        // UFO laser hits the spaceship
+                        lives--;
+                        messages.push(new Message(ship.x, ship.y, '-1', 'red'));
+                        lasers.splice(i, 1);
+                        if (lives < 0) gameOver();
                     }
                 }
             }
@@ -581,6 +762,7 @@
             score = 0; // Reset score
             cooldown = 0; // Reset laser cooldown
             lasers = []; // Clear lasers
+            ufos = [];
             asteroids = Array.from({ length: 5 }, () => 
                 new Asteroid(
                     Math.random() * canvas.width, 
@@ -658,7 +840,7 @@
 
 
         let startTime; // To store the start time
-        let gameDuration = 120000; // 10 seconds in milliseconds
+        let gameDuration = 300000; // 10 seconds in milliseconds
         let gameOverFlag = false; // Flag to mark if the game is over
 
         // Call this function when the game starts
@@ -680,6 +862,7 @@
 
 
 
+        let ufoSpawnTimer = 0;
 
         function gameLoop() {
 
@@ -761,8 +944,23 @@
                 laser.draw();
             });
 
+
+            ufos.forEach(ufo => {
+                ufo.update();
+                ufo.draw();
+            });
+
+
             // Handle collisions
             checkCollisions();
+
+
+            // Spawn UFOs every 10 seconds
+            if (performance.now() - ufoSpawnTimer > 10000) {
+                ufos.push(new UFO(Math.random() * canvas.width, Math.random() * canvas.height, 30));
+                ufoSpawnTimer = performance.now();
+            }
+
 
             // Update and draw messages
             messages.forEach(message => {
