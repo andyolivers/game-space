@@ -92,13 +92,14 @@ canvas {
 #game-title {
     font-size: 48px;
     margin-bottom: 20px;
-    color: cyan
+    color: cyan;
 }
 
 #game-description {
     font-size: 18px;
     margin-bottom: 40px;
     width: 60%;
+    line-height: 20px;
 }
 
 button {
@@ -116,4 +117,25 @@ button {
 button:hover {
     background: indigo;
     color: white;
+}
+
+
+.tooltip {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: black;
+    color: white;
+    padding: 10px;
+    border: 1px solid indigo;
+    border-radius: 5px;
+    font-size: 12px;
+    display: none;
+    white-space: nowrap;
+    line-height: 20px;
+}
+
+button:hover .tooltip {
+    display: block;
 }
