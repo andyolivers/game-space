@@ -26,14 +26,84 @@
         <canvas id="gameCanvas"></canvas>
     </div>
 
+    <audio id="menu-music"loop autoplay>
+        <source src="audio/strings-intro-239970.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="game-music" loop>
+        <source src="audio/game.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="laser-sound">
+        <source src="audio/laser.mp3" type="audio/mpeg">
+    </audio>
+
+
+    <audio id="explosion">
+        <source src="audio/explosion.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="heart">
+        <source src="audio/heart.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="hyperspace">
+        <source src="audio/hyperspace.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="points">
+        <source src="audio/hit.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="turbo">
+        <source src="audio/nitro.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="engine" loop>
+        <source src="audio/engine.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="gameover" loop>
+        <source src="audio/radio.mp3" type="audio/mpeg">
+    </audio>
     <script>
         const mainMenu = document.getElementById('main-menu'); 
         const gameContainer = document.getElementById('game-container');
         const startButton = document.getElementById('start-button');
         const exitButton = document.getElementById('exit-button');
 
+        const menuMusic = document.getElementById('menu-music');
+        const gameMusic = document.getElementById('game-music');
+        const laserSound = document.getElementById('laser-sound');
+
+        const explosionSound = document.getElementById('explosion');
+        const heartSound = document.getElementById('heart');
+        const hyperspaceSound = document.getElementById('hyperspace');
+        const pointsSound = document.getElementById('points');
+
+        const turboSound = document.getElementById('turbo');
+        const engineSound = document.getElementById('engine');
+        const gameoverSound = document.getElementById('gameover');
+
+        // Play menu music on load
+        //menuMusic.play();
+
+
+        // Set initial volume levels
+        menuMusic.volume = 0.5; // 50% volume for menu music
+        gameMusic.volume = 0.3; // 70% volume for game music
+        laserSound.volume = 0.8; // 80% volume for laser sound
+
+        explosionSound.volume = 0.8; // 80% volume for laser sound
+        heartSound.volume = 0.8; // 80% volume for laser sound
+        hyperspaceSound.volume = 0.8; // 80% volume for laser sound
+        pointsSound.volume = 0.9; // 80% volume for laser sound
+
+        turboSound.volume = 0.8; // 80% volume for laser sound
+        engineSound.volume = 0.5; // 80% volume for laser sound
+
+
+        gameoverSound.volume = 0.8; // 80% volume for laser sound
+
         // Start the game
         startButton.addEventListener('click', () => {
+            gameMusic.play();
             mainMenu.style.display = 'none';
             gameContainer.style.display = 'block';
             startGame(); // Function to start the game loop
@@ -41,6 +111,17 @@
 
         // Exit the game
         exitButton.addEventListener('click', () => {
+
+
+            gameoverSound.pause()
+            explosionSound.pause();
+            heartSound.pause();
+            hyperspaceSound.pause();
+            pointsSound.pause();
+            turboSound.pause();
+            engineSound.pause();
+            laserSound.pause()
+            gameMusic.pause();
             window.close(); // Attempt to close the window (may not work in all browsers)
         });
 
@@ -218,6 +299,18 @@
                     this.drawHyperspaceEffect();
                 }
 
+                // Engine flame (when ArrowUp is pressed)
+                if (keys['ArrowUp']) {
+                    ctx.fillStyle = 'orange';
+                    const flameLength = Math.random() * 10 + 20; // Random flame length for animation
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width / 4, this.height / 2);
+                    ctx.lineTo(this.width / 4, this.height / 2);
+                    ctx.lineTo(0, this.height / 2 + flameLength); // Engine flame
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
                 ctx.restore();
             }
 
@@ -299,6 +392,7 @@
 
                 lasers.push(new Laser(shipTipX, shipTipY, laserAngle));
                 cooldown = cooldownMax; // Reset cooldown
+
             }
         }
 
@@ -624,6 +718,7 @@
             }
 
             shoot() {
+                laserSound.play();
                 // Create a green laser fired by the UFO
                 lasers.push(new UFOLaser(this.x, this.y, this.angle, 'lime', 4));
             }
@@ -643,6 +738,7 @@
                     lives--;
                     messages.push(new Message(ship.x, ship.y, '-1','red'));
                     ship.shake(10); // Trigger the shake effect for 10 frames
+                    explosionSound.play();
                     asteroids.splice(i, 1); // Remove asteroid
                     if (lives < 0) gameOver();
                     continue;
@@ -654,6 +750,7 @@
                     if (!(laser instanceof UFOLaser)) { // Ignore UFO lasers
                         const distToLaser = Math.hypot(laser.x - asteroid.x, laser.y - asteroid.y);
                         if (distToLaser < asteroid.size) {
+                            pointsSound.play();
                             // Add a "+1" message at the asteroid's position
                             messages.push(new Message(asteroid.x, asteroid.y, '+1','lime'));
 
@@ -694,8 +791,10 @@
                     if (!(laser instanceof UFOLaser)) { // Ignore UFO lasers
                         const distToLaser = Math.hypot(laser.x - ufo.x, laser.y - ufo.y);
                         if (distToLaser < ufo.size) {
+                            pointsSound.play();
                             // Add a "+10" message at the UFO's position
                             messages.push(new Message(ufo.x, ufo.y, '+10','yellow'));
+
 
                             // Remove the UFO and the laser
                             ufos.splice(i, 1);
@@ -714,6 +813,7 @@
                     // Handle collision with the spaceship (UFO hits spaceship)
                     lives--;
                     ship.shake(10); // Trigger the shake effect for 10 frames
+                    explosionSound.play();
                     messages.push(new Message(ship.x, ship.y, '-1', 'red'));
                     ufos.splice(i, 1);
                     if (lives < 0) gameOver();
@@ -729,6 +829,7 @@
                         // UFO laser hits the spaceship
                         lives--;
                         ship.shake(10); // Trigger the shake effect for 10 frames
+                        explosionSound.play();
                         messages.push(new Message(ship.x, ship.y, '-1', 'red'));
                         lasers.splice(i, 1);
                         if (lives < 0) gameOver();
@@ -817,6 +918,18 @@
 
         function gameOver() {
             cancelAnimationFrame(gameLoop);
+
+            gameMusic.pause();
+            laserSound.pause();
+
+            explosionSound.pause();
+            heartSound.pause();
+            hyperspaceSound.pause();
+            pointsSound.pause();
+            turboSound.pause();
+            engineSound.pause();
+
+            gameoverSound.play()
             
             // "Game Over" text
             ctx.fillStyle = 'red';
@@ -838,6 +951,8 @@
             const restartText = 'Press ESC to Restart';
             const restartWidth = ctx.measureText(restartText).width;
             ctx.fillText(restartText, canvas.width / 2 - restartWidth / 2, canvas.height / 2 + 80);
+
+
             
             resetGame(); // Reset the game state
         }
@@ -956,6 +1071,7 @@
                 // Check collision with the ship
                 if (heart.checkCollisionHeart(ship)) {
                     lives++; // Increase lives
+                    heartSound.play();
                     feedbackMessages.push(
                         new FeedbackMessage(ship.x, ship.y - 20, "+1", "red")
                     ); // Add "+1" feedback
@@ -1038,14 +1154,59 @@
         window.addEventListener('keydown', e => keys[e.key] = true);
         window.addEventListener('keyup', e => keys[e.key] = false);
 
+
+
         window.addEventListener('keydown', e => {
-            keys[e.key] = true;
-            if (e.key === ' ') shootLaser();
+            if (keys[e.key]) {keys[e.key] = true; // Register the key
+                if (e.key === ' ') {
+                    shootLaser();
+                    laserSound.currentTime = 0; // Reset sound to allow rapid playback
+                    laserSound.play();
+                }
+            }
+        });
+
+
+        //window.addEventListener('keydown', e => {
+        //    if (e.key === 'h') hyperspace();
+        //});
+
+
+
+        window.addEventListener('keydown', e => {
+            //if (keys[e.key]) {keys[e.key] = true; // Register the key
+            if (e.key === 'ArrowUp' && engineSound.paused) {
+                engineSound.play().catch(error => console.error('Engine sound playback blocked:', error));
+            }
+            //}
+        });
+
+        window.addEventListener('keyup', e => {
+            if (e.key === 'ArrowUp') {
+                engineSound.pause();
+                engineSound.currentTime = 0; // Reset sound for next play
+            }
         });
 
 
         window.addEventListener('keydown', e => {
-            if (e.key === 'h') hyperspace();
+            if (keys[e.key]) {keys[e.key] = true; // Register the key
+                if (e.key === 'b') {
+                    //turboSound.currentTime = 0; // Reset sound to allow rapid playback
+                    turboSound.play();
+                }
+            }
+        });
+
+
+        window.addEventListener('keydown', e => {
+            if (keys[e.key]) {keys[e.key] = true; // Register the key
+                if (e.key === 'h') {
+                    hyperspace();
+                    //laserSound.currentTime = 0; // Reset sound to allow rapid playback
+                    hyperspaceSound.play();
+                }
+            }
         });
 
 
